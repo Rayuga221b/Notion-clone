@@ -12,6 +12,7 @@ const MAX_BLOCKS = 1800;
 const WARN_BLOCKS = 1500;
 
 interface BlockEditorProps {
+  activePageId: string;
   blocks: Block[];
   pages: Page[]; // Added pages for linking
   onChange: (blocks: Block[]) => void;
@@ -20,9 +21,46 @@ interface BlockEditorProps {
   onDeletePage: (pageId: string) => void;
 }
 
-const BlockEditor: React.FC<BlockEditorProps> = ({ blocks, pages, onChange, onCreatePage, onNavigateToPage, onDeletePage }) => {
+const BlockEditor: React.FC<BlockEditorProps> = ({ activePageId, blocks, pages, onChange, onCreatePage, onNavigateToPage, onDeletePage }) => {
   const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
   const [loadingSuggestion, setLoadingSuggestion] = useState(false);
+  const [collapsedBlockIds, setCollapsedBlockIds] = useState<Set<string>>(new Set());
+
+  // Load collapse state from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem(`collapsed_${activePageId}`);
+    if (saved) {
+      setCollapsedBlockIds(new Set(JSON.parse(saved)));
+    } else {
+      setCollapsedBlockIds(new Set());
+    }
+  }, [activePageId]);
+
+  // Save collapse state to localStorage
+  useEffect(() => {
+    if (activePageId) {
+      localStorage.setItem(`collapsed_${activePageId}`, JSON.stringify(Array.from(collapsedBlockIds)));
+    }
+  }, [collapsedBlockIds, activePageId]);
+
+  const toggleCollapse = (blockId: string) => {
+    setCollapsedBlockIds(prev => {
+      const next = new Set(prev);
+      if (next.has(blockId)) next.delete(blockId);
+      else next.add(blockId);
+      return next;
+    });
+  };
+
+  const getHeadingLevel = (type: BlockType): number => {
+    if (type === BlockType.Heading1) return 1;
+    if (type === BlockType.Heading2) return 2;
+    if (type === BlockType.Heading3) return 3;
+    if (type === BlockType.Heading4) return 4;
+    if (type === BlockType.Heading5) return 5;
+    if (type === BlockType.Heading6) return 6;
+    return 7; // Not a heading or higher than H6
+  };
 
   // Slash Menu State
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
@@ -194,8 +232,8 @@ const BlockEditor: React.FC<BlockEditorProps> = ({ blocks, pages, onChange, onCr
       {/* Block Count Warning */}
       {blocks.length >= WARN_BLOCKS && (
         <div className={`mb-6 p-4 rounded-lg flex items-center gap-3 border ${blocks.length >= MAX_BLOCKS
-            ? 'bg-red-50 border-red-100 text-red-800 dark:bg-red-900/20 dark:border-red-900/30 dark:text-red-300'
-            : 'bg-amber-50 border-amber-100 text-amber-800 dark:bg-amber-900/20 dark:border-amber-900/30 dark:text-amber-300'
+          ? 'bg-red-50 border-red-100 text-red-800 dark:bg-red-900/20 dark:border-red-900/30 dark:text-red-300'
+          : 'bg-amber-50 border-amber-100 text-amber-800 dark:bg-amber-900/20 dark:border-amber-900/30 dark:text-amber-300'
           }`}>
           {blocks.length >= MAX_BLOCKS ? <AlertTriangle size={18} /> : <Info size={18} />}
           <div className="text-sm">
@@ -214,12 +252,31 @@ const BlockEditor: React.FC<BlockEditorProps> = ({ blocks, pages, onChange, onCr
       <div className="space-y-1">
         {(() => {
           let numberingCounter = 0;
+          let currentHiddenLevel = 7; // If less than 7, we are hiding blocks under a collapsed heading of that level
+
           return blocks.map((block, index) => {
-            if (block.type === BlockType.Number) {
+            const level = getHeadingLevel(block.type);
+
+            // Hierarchy Logic: If we encounter a heading of equal or higher level (smaller number), we stop hiding
+            if (level <= currentHiddenLevel) {
+              currentHiddenLevel = 7;
+            }
+
+            const isHidden = currentHiddenLevel < 7;
+            const isCollapsed = collapsedBlockIds.has(block.id);
+
+            // If this heading is collapsed, start hiding subsequent blocks
+            if (!isHidden && isCollapsed && level < 7) {
+              currentHiddenLevel = level;
+            }
+
+            if (block.type === BlockType.Number && !isHidden) {
               numberingCounter++;
-            } else {
+            } else if (!isHidden) {
               numberingCounter = 0;
             }
+
+            if (isHidden) return null;
 
             return (
               <EditableBlock
@@ -227,6 +284,8 @@ const BlockEditor: React.FC<BlockEditorProps> = ({ blocks, pages, onChange, onCr
                 block={block}
                 indexInList={block.type === BlockType.Number ? numberingCounter : undefined}
                 isFocused={focusedBlockId === block.id}
+                isCollapsed={isCollapsed}
+                onToggleCollapse={() => toggleCollapse(block.id)}
                 onUpdate={(updates) => updateBlock(block.id, updates)}
                 onFocus={() => setFocusedBlockId(block.id)}
                 onAddNext={() => addBlock(index,

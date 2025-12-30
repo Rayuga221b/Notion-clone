@@ -45,7 +45,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const rootPages = pages.filter(p => !p.parentId);
 
   return (
-    <div className="w-64 bg-[#F7F7F5] dark:bg-black border-r border-[#EBEBEA] dark:border-gray-800 h-screen flex flex-col text-[#37352F] dark:text-gray-300 transition-colors select-none">
+    <div className="w-64 bg-[#F7F7F5] dark:bg-[#090909] border-r border-[#EBEBEA] dark:border-gray-800 h-screen flex flex-col text-[#37352F] dark:text-gray-300 transition-colors select-none">
 
       {/* User / Workspace Switcher */}
       <div className="p-4 flex items-center gap-2 hover:bg-[#EFEFED] dark:hover:bg-gray-800 cursor-pointer transition-colors m-2 rounded-md">

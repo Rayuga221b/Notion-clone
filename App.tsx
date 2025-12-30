@@ -3,7 +3,7 @@ import Sidebar from './components/Sidebar';
 import BlockEditor from './components/Editor/BlockEditor';
 import ExpenseView from './components/ExpenseTracker/ExpenseView';
 import { ViewMode, Page, BlockType, Transaction } from './types';
-import { Menu, MoreHorizontal, Moon, Sun, Monitor, Search, LogOut, Layout } from 'lucide-react';
+import { Menu, MoreHorizontal, Moon, Sun, Monitor, Search, LogOut, Layout, Cloud, Check, CloudOff } from 'lucide-react';
 import SearchDialog from './components/SearchDialog';
 import { useAuth } from './components/AuthProvider';
 import { persistenceService } from './services/persistenceService';
@@ -61,6 +61,7 @@ const App: React.FC = () => {
   const [showSearch, setShowSearch] = useState(false);
   const { user, login, logout, loading: authLoading } = useAuth();
   const menuRef = useRef<HTMLDivElement>(null);
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'unsaved' | 'saving'>('saved');
 
   // Undo/Redo History State
   const [undoStack, setUndoStack] = useState<Page[][]>([]);
@@ -388,20 +389,32 @@ const App: React.FC = () => {
     if (user && activePageId) {
       const updatedPage = pages.find(p => p.id === activePageId);
       if (updatedPage) {
-        // We use the new state inside setTitle and blocks update
-        // But saveToHistory is async in nature of state updates, 
-        // so we derive the latest page object carefully.
         const firstH1 = newBlocks.find(b => b.type === BlockType.Heading1);
         const newTitle = (firstH1 && firstH1.content.trim()) ? firstH1.content : 'Untitled';
         const pageToSave = { ...updatedPage, blocks: newBlocks, title: newTitle };
-        persistenceService.savePage(user.uid, pageToSave);
+
+        setSaveStatus('unsaved');
+        persistenceService.savePage(user.uid, pageToSave, 5000).then(() => {
+          setSaveStatus('saved');
+        });
       }
+    }
+  };
+
+  const handleManualSave = async () => {
+    if (!user || !activePageId || saveStatus === 'saving') return;
+
+    const activePage = pages.find(p => p.id === activePageId);
+    if (activePage) {
+      setSaveStatus('saving');
+      await persistenceService.savePage(user.uid, activePage, 0);
+      setSaveStatus('saved');
     }
   };
 
   if (authLoading || loading_data) {
     return (
-      <div className="h-screen w-full flex items-center justify-center bg-white dark:bg-black">
+      <div className="h-screen w-full flex items-center justify-center bg-white dark:bg-[#0C0C0C]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white"></div>
       </div>
     );
@@ -466,7 +479,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="flex w-full h-screen bg-white dark:bg-black text-[#37352F] dark:text-gray-100 transition-colors duration-200">
+    <div className="flex w-full h-screen bg-white dark:bg-[#0C0C0C] text-[#37352F] dark:text-gray-100 transition-colors duration-200">
 
       {/* Sidebar (Desktop) */}
       <div className={`${isSidebarOpen ? 'block' : 'hidden'} md:block shrink-0 h-full border-r border-gray-200 dark:border-gray-800`}>
@@ -486,7 +499,7 @@ const App: React.FC = () => {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden relative bg-white dark:bg-black">
+      <div className="flex-1 flex flex-col h-full overflow-hidden relative bg-white dark:bg-[#0C0C0C]">
 
         {/* Topbar */}
         <div className="h-12 border-b border-transparent hover:border-gray-100 dark:hover:border-gray-800 flex items-center px-4 justify-between shrink-0 transition-colors z-20">
@@ -533,6 +546,33 @@ const App: React.FC = () => {
               )}
               {currentView === ViewMode.Expenses && <span className="font-medium text-gray-900 dark:text-gray-100">Expenses</span>}
               {currentView === ViewMode.Dashboard && <span className="font-medium text-gray-900 dark:text-gray-100">Dashboard</span>}
+            </div>
+
+            {/* Save Status Indicator */}
+            <div
+              className="ml-4 flex items-center gap-1.5 transition-all duration-300"
+            >
+              {saveStatus === 'unsaved' && (
+                <button
+                  onClick={handleManualSave}
+                  className="flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium text-amber-600 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400 animate-in fade-in slide-in-from-left-1"
+                >
+                  <Cloud size={12} />
+                  <span>Unsaved</span>
+                </button>
+              )}
+              {saveStatus === 'saving' && (
+                <div className="flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-medium text-gray-400">
+                  <div className="w-3 h-3 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                  <span>Saving...</span>
+                </div>
+              )}
+              {saveStatus === 'saved' && (
+                <div className="flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-medium text-green-600 dark:text-green-500 opacity-0 hover:opacity-100 transition-opacity">
+                  <Check size={12} />
+                  <span>Saved</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -590,6 +630,7 @@ const App: React.FC = () => {
             <div className="min-h-full pb-32">
               <div className="max-w-3xl mx-auto pt-12 px-6 sm:px-12">
                 <BlockEditor
+                  activePageId={activePage.id}
                   blocks={activePage.blocks}
                   pages={pages}
                   onChange={updateActivePageBlocks}
@@ -600,6 +641,8 @@ const App: React.FC = () => {
                     return newId;
                   }}
                   onNavigateToPage={handlePageSelect}
+                  onNavigateUp={() => { }} // Placeholder or real logic
+                  onNavigateDown={() => { }} // Placeholder or real logic
                   onDeletePage={handleDeletePage}
                 />
               </div>

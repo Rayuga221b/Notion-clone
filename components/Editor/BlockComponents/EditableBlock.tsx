@@ -17,12 +17,14 @@ interface EditableBlockProps {
     onRequestSuggestion: () => void;
     onNavigateToPage?: (pageId: string) => void;
     indexInList?: number;
+    isCollapsed?: boolean;
+    onToggleCollapse?: () => void;
 }
 
 export const EditableBlock: React.FC<EditableBlockProps> = ({
     block, isFocused, onUpdate, onFocus, onAddNext, onDelete,
     onOpenMenu, slashMenuOpen, onSlashFilterChange, onNavigateUp, onNavigateDown, onRequestSuggestion,
-    indexInList, onNavigateToPage
+    indexInList, onNavigateToPage, isCollapsed, onToggleCollapse
 }) => {
     const contentRef = useRef<HTMLDivElement>(null);
 
@@ -136,24 +138,29 @@ export const EditableBlock: React.FC<EditableBlockProps> = ({
         } else if (e.key === 'Tab') {
             e.preventDefault();
             onRequestSuggestion();
+        } else if (e.altKey && e.key === 'Enter') {
+            if (block.type.startsWith('h')) {
+                e.preventDefault();
+                onToggleCollapse?.();
+            }
         }
     };
 
     const getBlockStyles = () => {
         switch (block.type) {
-            case BlockType.Heading1: return "text-4xl font-bold mt-6 mb-2 dark:text-gray-100";
-            case BlockType.Heading2: return "text-3xl font-bold mt-5 mb-2 dark:text-gray-100";
-            case BlockType.Heading3: return "text-2xl font-semibold mt-4 mb-2 dark:text-gray-200";
-            case BlockType.Heading4: return "text-xl font-semibold mt-3 mb-1 dark:text-gray-200";
-            case BlockType.Heading5: return "text-lg font-semibold mt-2 mb-1 dark:text-gray-300";
-            case BlockType.Heading6: return "text-base font-semibold mt-2 mb-1 text-gray-500 dark:text-gray-400 uppercase";
-            case BlockType.Quote: return "border-l-4 border-gray-900 dark:border-gray-500 pl-4 py-1 my-2 italic text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 rounded-r";
-            case BlockType.Code: return "font-mono text-sm bg-gray-100 dark:bg-gray-800 p-2 rounded text-gray-800 dark:text-gray-200";
-            case BlockType.Callout: return "bg-gray-50 dark:bg-gray-800 p-4 rounded-lg flex gap-3 text-gray-900 dark:text-gray-100";
-            case BlockType.Page: return "text-gray-900 dark:text-gray-100 font-medium underline decoration-gray-300 underline-offset-4 flex items-center gap-1";
-            case BlockType.PageLink: return "text-purple-600 dark:text-purple-400 font-medium underline decoration-purple-300 underline-offset-4 flex items-center gap-1";
+            case BlockType.Heading1: return "text-3xl font-bold mt-8 mb-1 dark:text-gray-100 leading-tight";
+            case BlockType.Heading2: return "text-2xl font-bold mt-6 mb-1 dark:text-gray-100 leading-tight";
+            case BlockType.Heading3: return "text-xl font-bold mt-4 mb-1 dark:text-gray-200 leading-tight";
+            case BlockType.Heading4: return "text-lg font-semibold mt-3 mb-1 dark:text-gray-200 leading-snug";
+            case BlockType.Heading5: return "text-base font-semibold mt-2 mb-1 dark:text-gray-300 leading-snug";
+            case BlockType.Heading6: return "text-sm font-semibold mt-2 mb-1 text-gray-500 dark:text-gray-400 uppercase tracking-wider";
+            case BlockType.Quote: return "border-l-[3px] border-gray-900 dark:border-gray-500 pl-4 py-1 my-2 text-[#37352f] dark:text-gray-300 opacity-90 italic leading-relaxed";
+            case BlockType.Code: return "font-mono text-[14px] bg-[#f7f6f3] dark:bg-gray-800 p-4 rounded text-gray-800 dark:text-gray-200 my-2 block w-full border border-gray-200 dark:border-gray-700";
+            case BlockType.Callout: return "bg-gray-50 dark:bg-gray-800 p-4 rounded-lg flex gap-3 text-gray-900 dark:text-gray-100 border border-gray-100 dark:border-gray-700";
+            case BlockType.Page: return "text-gray-900 dark:text-gray-100 font-medium border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 py-2.5 transition-colors flex items-center gap-2 group/page";
+            case BlockType.PageLink: return "text-purple-600 dark:text-purple-400 font-medium underline decoration-purple-300 underline-offset-4 flex items-center gap-1 hover:text-purple-700 transition-colors";
             case BlockType.Divider: return "hidden";
-            default: return "text-base py-1 dark:text-gray-300";
+            default: return "text-base py-[3px] leading-[1.6] dark:text-gray-300";
         }
     };
 
@@ -170,6 +177,14 @@ export const EditableBlock: React.FC<EditableBlockProps> = ({
                 contentEditable={false}
             >
                 <div className="flex items-center gap-0.5 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer text-gray-400 dark:text-gray-500">
+                    {block.type.startsWith('h') && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onToggleCollapse?.(); }}
+                            className="hover:text-gray-600 dark:hover:text-gray-300 mr-0.5"
+                        >
+                            {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+                        </button>
+                    )}
                     <button onClick={onAddNext} className="hover:text-gray-600 dark:hover:text-gray-300"><Plus size={16} /></button>
                 </div>
             </div>
