@@ -10,14 +10,26 @@ export enum BlockType {
   Bullet = 'bullet',
   Number = 'number',
   Quote = 'quote',
-  Divider = 'divider'
+  Divider = 'divider',
+  Toggle = 'toggle',
+  Code = 'code',
+  Callout = 'callout',
+  Image = 'image',
+  File = 'file',
+  Page = 'page',
+  PageLink = 'page-link'
 }
 
 export interface Block {
   id: string;
   type: BlockType;
   content: string; // Stores HTML content
-  checked?: boolean;
+  checked?: boolean; // For Todo
+  isOpen?: boolean; // For Toggle
+  language?: string; // For Code
+  url?: string; // For Image/File
+  caption?: string; // For Image/File
+  pageId?: string; // For embedded Page blocks
 }
 
 export interface Page {
@@ -27,6 +39,10 @@ export interface Page {
   coverImage?: string;
   blocks: Block[];
   updatedAt: Date;
+  parentId: string | null;
+  childIds: string[];
+  isFavorite: boolean;
+  isExpanded: boolean;
 }
 
 export interface Transaction {

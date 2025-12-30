@@ -2,9 +2,9 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { Transaction } from '../types';
 
 const getAiClient = () => {
-  const apiKey = process.env.API_KEY;
+  const apiKey = import.meta.env.VITE_API_KEY;
   if (!apiKey) {
-    console.warn("API_KEY not found in environment variables");
+    console.warn("VITE_API_KEY not found in environment variables");
     return null;
   }
   return new GoogleGenAI({ apiKey });
@@ -72,23 +72,23 @@ export const getSpendingInsights = async (transactions: Transaction[]): Promise<
 };
 
 export const suggestNextBlock = async (currentContext: string): Promise<string> => {
-    const ai = getAiClient();
-    if (!ai) return "";
+  const ai = getAiClient();
+  if (!ai) return "";
 
-    try {
-        // Strip HTML tags from context to provide clean text to the model
-        const cleanContext = currentContext.replace(/<[^>]*>?/gm, '');
+  try {
+    // Strip HTML tags from context to provide clean text to the model
+    const cleanContext = currentContext.replace(/<[^>]*>?/gm, '');
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: `Continue the following document text naturally with one short paragraph or a list item. Context: "${cleanContext}"`,
-            config: {
-                maxOutputTokens: 100,
-                thinkingConfig: { thinkingBudget: 0 }
-            }
-        });
-        return response.text || "";
-    } catch (e) {
-        return "";
-    }
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: `Continue the following document text naturally with one short paragraph or a list item. Context: "${cleanContext}"`,
+      config: {
+        maxOutputTokens: 100,
+        thinkingConfig: { thinkingBudget: 0 }
+      }
+    });
+    return response.text || "";
+  } catch (e) {
+    return "";
+  }
 }
