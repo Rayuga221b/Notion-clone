@@ -3,10 +3,6 @@
   <h3 align="center">Thinking, compiled.</h3>
 </div>
 
-<div align="center">
-  <img src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" alt="COMPILE Banner" width="100%" />
-</div>
-
 <br/>
 
 **COMPILE.** is an intelligent, Notion-style workspace designed to revolutionize personal productivity. It combines a flexible block-based editor with a sleek, distraction-free interface, allowing you to organize your thoughts, projects, and goals in one place.
