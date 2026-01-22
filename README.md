@@ -72,6 +72,3 @@ npm run build
 
 ---
 
-<div align="center">
-  <sub>Built with ❤️ by the COMPILE team</sub>
-</div>
