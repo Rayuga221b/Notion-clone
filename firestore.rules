@@ -2,69 +2,71 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper function to check if user is a member of the workspace
-    function isMember(workspaceId) {
-      return exists(/databases/$(database)/documents/workspaces/$(workspaceId)/members/$(request.auth.uid));
+    // Users Collection - users can only read/write their own profile
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
     // Workspaces
     match /workspaces/{workspaceId} {
-      // Allow read if user is a member
-      allow read: if isMember(workspaceId);
-      // Allow update/delete only if owner (resource exists)
-      allow update, delete: if request.auth != null && request.auth.uid == resource.data.ownerId;
-      // Allow create if user is authenticated
-      allow create: if request.auth != null;
+      // Get (single document): Members can read, OR anyone can read public workspaces
+      allow get: if request.auth != null && (
+        exists(/databases/$(database)/documents/workspaces/$(workspaceId)/members/$(request.auth.uid)) ||
+        resource.data.type == 'public'
+      );
+      
+      // List (query): Only allow querying PUBLIC workspaces (for invite code lookup)
+      // This avoids the exists() check which fails for collection queries
+      allow list: if request.auth != null && resource.data.type == 'public';
 
-      // Workspace Members
-      match /members/{userId} {
-        // Members can read fellow members
-        allow read: if isMember(workspaceId);
-        // Only workspace owner or the user themselves (for leaving) can write? 
-        // For simplicity: Workspace Owner manages members. 
-        // But also, a user should be able to join (create their own member record?) 
-        // Refined: 
-        // - Workspace Owner can add/remove members.
-        // - User can add THEMSELVES if they have a valid invite code (handled via backend or careful rules, but simplified for now: Owner adds, or logic is consistent).
-        // Let's stick to the prompt's simplicity:
-        // "allow write: if request.auth.uid == resource.data.ownerId" (on workspace) -> implies owner controls subcollections mostly?
-        // Actually prompt says: "match /workspaces/{workspaceId} ... allow write: if request.auth.uid == resource.data.ownerId;"
-        // It complicates "members". Let's allow read/write for members for simplicity if the prompt implies it, 
-        // BUT prompt specifically says: "allow write: if request.auth.uid == resource.data.ownerId;" for the workspace doc itself.
+      // Create: Authenticated users can create if they set themselves as owner
+      allow create: if request.auth != null && request.resource.data.ownerId == request.auth.uid;
+
+      // Update: Only the owner can update
+      allow update: if request.auth != null && resource.data.ownerId == request.auth.uid;
+
+      // Delete: Owner can delete if workspace is not protected
+      allow delete: if request.auth != null 
+        && resource.data.ownerId == request.auth.uid 
+        && (resource.data.isProtected == null || resource.data.isProtected == false);
+
+      // Workspace Members subcollection
+      match /members/{memberId} {
+        // Read: Any authenticated user can read member docs
+        allow read: if request.auth != null;
         
-        // Let's refine based on "6. Firestore Security Rules (Mandatory)" in prompt.
-        // It says:
-        // match /workspaces/{workspaceId} {
-        //   allow read: if isMember(workspaceId);
-        //   allow write: if request.auth.uid == resource.data.ownerId;
-        // ... (subcollections pages/databases/rows allow read, write if isMember)
+        // Create: Owner can add anyone, OR user can add themselves to public workspaces
+        allow create: if request.auth != null && (
+          get(/databases/$(database)/documents/workspaces/$(workspaceId)).data.ownerId == request.auth.uid ||
+          (request.auth.uid == memberId && get(/databases/$(database)/documents/workspaces/$(workspaceId)).data.type == 'public')
+        );
         
-        // Members collection isn't explicitly detailed in the "Mandatory" block's subcollections, 
-        // but likely needs to be writable by owner, or by user joining.
-        // Let's generic locking: Owner can write logic.
-        allow read: if isMember(workspaceId);
-        allow write: if request.auth != null; // Refine this later if needed, but for now we follow strict instructions for content.
+        // Delete: Owner can remove anyone, OR user can remove themselves
+        allow delete: if request.auth != null && (
+          get(/databases/$(database)/documents/workspaces/$(workspaceId)).data.ownerId == request.auth.uid ||
+          request.auth.uid == memberId
+        );
+        
+        // Update: Only owner can update member roles
+        allow update: if request.auth != null && 
+          get(/databases/$(database)/documents/workspaces/$(workspaceId)).data.ownerId == request.auth.uid;
       }
 
-      // Pages (Workspace-Scoped)
+      // Pages subcollection
       match /pages/{pageId} {
-        allow read, write: if isMember(workspaceId);
+        // Read: Members only
+        allow read: if request.auth != null && 
+          exists(/databases/$(database)/documents/workspaces/$(workspaceId)/members/$(request.auth.uid));
+        
+        // Write: Owner OR (member AND membersCanEdit is true)
+        allow write: if request.auth != null && (
+          get(/databases/$(database)/documents/workspaces/$(workspaceId)).data.ownerId == request.auth.uid ||
+          (
+            exists(/databases/$(database)/documents/workspaces/$(workspaceId)/members/$(request.auth.uid)) &&
+            get(/databases/$(database)/documents/workspaces/$(workspaceId)).data.membersCanEdit == true
+          )
+        );
       }
-
-      // Databases (Workspace-Scoped)
-      match /databases/{databaseId} {
-        allow read, write: if isMember(workspaceId);
-      }
-
-      // Database Rows (Workspace-Scoped)
-      match /databaseRows/{rowId} {
-        allow read, write: if isMember(workspaceId);
-      }
-    }
-
-    // Users Collection
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }

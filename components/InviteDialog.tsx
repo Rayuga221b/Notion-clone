@@ -27,11 +27,11 @@ export const InviteDialog: React.FC<InviteDialogProps> = ({ isOpen, onClose, onJ
                 onJoin(workspace);
                 onClose();
             } else {
-                setError('Invalid invite code or workspace not found.');
+                setError('Workspace not found or is not public.');
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
-            setError('Failed to join workspace. Please try again.');
+            setError(err.message || 'Failed to join workspace.');
         } finally {
             setIsLoading(false);
         }

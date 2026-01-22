@@ -133,7 +133,7 @@ const App: React.FC = () => {
         if (profile.darkMode !== undefined) setDarkMode(profile.darkMode);
 
         // 2. Fetch User Workspaces
-        const userWorkspaces = await persistenceService.fetchUserWorkspaces(profile.workspaceIds || []);
+        const userWorkspaces = await persistenceService.fetchUserWorkspaces(profile.workspaceIds || [], user.uid);
 
         let activeWs: Workspace | undefined;
 
@@ -206,9 +206,12 @@ const App: React.FC = () => {
   // HANDLERS: Workspace
   // ----------------------------------------------------------------------
 
-  const handleWorkspaceChange = async (workspaceId: string) => {
-    const ws = workspaces.find(w => w.id === workspaceId);
-    if (!ws) return;
+  const handleWorkspaceChange = async (workspaceId: string, providedWs?: Workspace) => {
+    const ws = providedWs || workspaces.find(w => w.id === workspaceId);
+    if (!ws) {
+      console.warn("Workspace not found for ID:", workspaceId);
+      return;
+    }
 
     setCurrentWorkspace(ws);
     setActivePageId(null);
@@ -222,11 +225,13 @@ const App: React.FC = () => {
   };
 
   const handleJoinWorkspace = (ws: Workspace) => {
-    // Check if already exists in list (shouldn't if passed from InviteDialog success)
-    if (!workspaces.find(w => w.id === ws.id)) {
-      setWorkspaces(prev => [...prev, ws]);
-    }
-    handleWorkspaceChange(ws.id);
+    setWorkspaces(prev => {
+      if (!prev.find(w => w.id === ws.id)) {
+        return [...prev, ws];
+      }
+      return prev;
+    });
+    handleWorkspaceChange(ws.id, ws);
   };
 
   const handleWorkspaceRenamed = (id: string, name: string) => {
@@ -246,12 +251,21 @@ const App: React.FC = () => {
       if (remaining.length > 0) {
         handleWorkspaceChange(remaining[0].id);
       } else {
-        // Should theoretically not happen if protected workspace exists
-        // But if it does, maybe create one or show empty state?
-        // For now, let's assume one always exists.
         setCurrentWorkspace(null);
         setPages([]);
       }
+    }
+  };
+
+  const handleWorkspaceLeft = (id: string) => {
+    // Same logic as deleted from user's perspective
+    handleWorkspaceDeleted(id);
+  };
+
+  const handleWorkspaceSettingsChanged = (id: string, settings: Partial<Workspace>) => {
+    setWorkspaces(prev => prev.map(w => w.id === id ? { ...w, ...settings } : w));
+    if (currentWorkspace?.id === id) {
+      setCurrentWorkspace(prev => prev ? { ...prev, ...settings } : null);
     }
   };
 
@@ -715,6 +729,8 @@ const App: React.FC = () => {
             onJoinWorkspace={handleJoinWorkspace}
             onWorkspaceRenamed={handleWorkspaceRenamed}
             onWorkspaceDeleted={handleWorkspaceDeleted}
+            onWorkspaceLeft={handleWorkspaceLeft}
+            onWorkspaceSettingsChanged={handleWorkspaceSettingsChanged}
             userId={user.uid}
             userEmail={user.email || ''}
           />

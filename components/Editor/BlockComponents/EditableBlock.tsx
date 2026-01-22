@@ -218,8 +218,8 @@ export const EditableBlock: React.FC<EditableBlockProps> = ({
             <div className={`flex-1 min-w-0 flex items-start relative ${block.type === BlockType.Callout ? 'bg-gray-50 dark:bg-gray-800 rounded-lg p-4' : ''}`}>
 
                 {/* Prefix Icons */}
-                {block.type === BlockType.Bullet && <span className="mr-2 text-xl leading-6 select-none dark:text-gray-300 mt-[-3px]">•</span>}
-                {block.type === BlockType.Number && <span className="mr-2 text-base leading-7 font-medium text-gray-500 select-none dark:text-gray-400 w-5 text-right">{indexInList}.</span>}
+                {block.type === BlockType.Bullet && <span className="mr-2 text-2xl select-none dark:text-gray-300 flex items-center leading-[1.6]">•</span>}
+                {block.type === BlockType.Number && <span className="mr-2 text-base font-medium text-gray-500 select-none dark:text-gray-400 w-5 text-right flex items-center leading-[1.6]">{indexInList}.</span>}
                 {block.type === BlockType.Todo && (
                     <div
                         className="mr-2 mt-1 cursor-pointer text-gray-400 hover:text-blue-500 select-none"

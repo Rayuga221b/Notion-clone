@@ -60,6 +60,7 @@ export interface Workspace {
   // Local-only property to store the current user's role
   role?: 'owner' | 'member';
   isProtected?: boolean;
+  membersCanEdit?: boolean; // For public workspaces: can members edit pages?
 }
 
 export interface UserProfile {

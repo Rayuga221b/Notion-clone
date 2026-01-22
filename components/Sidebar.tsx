@@ -35,9 +35,12 @@ interface SidebarProps {
   workspaces: Workspace[];
   activeWorkspaceId: string | null;
   onWorkspaceChange: (id: string) => void;
+  onWorkspaceCreated: (ws: Workspace) => void;
   onJoinWorkspace: (ws: Workspace) => void;
   onWorkspaceRenamed: (id: string, name: string) => void;
   onWorkspaceDeleted: (id: string) => void;
+  onWorkspaceLeft?: (id: string) => void;
+  onWorkspaceSettingsChanged?: (id: string, settings: Partial<Workspace>) => void;
   userId: string;
   userEmail?: string;
 }
@@ -62,6 +65,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   onJoinWorkspace,
   onWorkspaceRenamed,
   onWorkspaceDeleted,
+  onWorkspaceLeft,
+  onWorkspaceSettingsChanged,
   userId,
   userEmail
 }) => {
@@ -84,6 +89,8 @@ const Sidebar: React.FC<SidebarProps> = ({
         userEmail={userEmail}
         onWorkspaceRenamed={onWorkspaceRenamed}
         onWorkspaceDeleted={onWorkspaceDeleted}
+        onWorkspaceLeft={onWorkspaceLeft}
+        onWorkspaceSettingsChanged={onWorkspaceSettingsChanged}
       />
 
       <InviteDialog
